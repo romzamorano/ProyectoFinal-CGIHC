@@ -22,28 +22,30 @@ public:
 	bool getCambioCamaraPendiente() { return cambioCamaraPendiente; }
 	void confirmarCambioCamara() { cambioCamaraPendiente = false; }
 
+	void ActualizarAnimacionTeclado(GLfloat dt);
+
 	bool getLinternaAvatar() { return linternaAvatar; }
 	GLfloat getAnguloBrazoGoku() { return anguloBrazoGoku; }
 	bool getInteraccionPersonajes() { return interaccionPersonajes; }
 
 	~Window();
 private:
-	GLFWwindow* mainWindow;
+	GLFWwindow* mainWindow = nullptr;
 	GLint width, height;
 	bool keys[1024];
 	GLint bufferWidth, bufferHeight;
 	void createCallbacks();
 	GLfloat lastX;
 	GLfloat lastY;
-	GLfloat xChange;
-	GLfloat yChange;
+	GLfloat xChange = 0;
+	GLfloat yChange = 0;
 
 	// Variables de control del Proyecto Final
-	GLint camaraActiva;             // 1: Planeta Extracción, 2: Planeta Refinamiento, 3: Carrera/Vuelo, 4: Espacio
-	bool cambioCamaraPendiente;     // Bandera para teletransportar la cámara al presionar 1, 2, 3 o 4
+	GLint camaraActiva;             // 1: Planeta Extraccion, 2: Planeta Refinamiento, 3: Carrera/Vuelo, 4: Espacio
+	bool cambioCamaraPendiente;     // Bandera para teletransportar la camara al presionar 1, 2, 3 o 4
 	bool linternaAvatar;            // Spotlight del Insectoide (Tecla L)
 	GLfloat anguloBrazoGoku;        // Saludo de Goku (Teclas J y K)
-	bool interaccionPersonajes;     // Activación de animación básica (Tecla M)
+	bool interaccionPersonajes;     // Activacion de animacion basica (Tecla M)
 
 	bool mouseFirstMoved;
 	static void ManejaTeclado(GLFWwindow* window, int key, int code, int action, int mode);
