@@ -1,2 +1,136 @@
-# Blender 5.2.2 LTS MTL File: 'None'
-# www.blender.org
+# Space_marine by Akshit_yerpude (CC-BY-4.0) - recoloreado a Templario Negro
+
+newmtl mat_0
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_belt_middle.png
+
+newmtl mat_1
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_belt.png
+
+newmtl mat_2
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_pockets.png
+
+newmtl mat_3
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_eyes.png
+
+newmtl mat_4
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_head.png
+
+newmtl mat_5
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_wings.png
+
+newmtl mat_6
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_chest_plate.png
+
+newmtl mat_7
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_lower_body.png
+
+newmtl mat_8
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_shoulder.png
+
+newmtl mat_9
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_legs.png
+
+newmtl mat_10
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_seal_writing.png
+
+newmtl mat_11
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_jets.png
+
+newmtl mat_12
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_hand_inner.png
+
+newmtl mat_13
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_legs_back.png
+
+newmtl mat_14
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 32
+d 1
+illum 2
+map_Kd sm_seal.png

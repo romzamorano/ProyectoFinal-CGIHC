@@ -1,0 +1,20 @@
+newmtl alien_monstruo_mat1
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.2 0.2 0.2
+Ns 16
+map_Kd alien_monstruo_mat1.png
+
+newmtl alien_monstruo_mat2
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.2 0.2 0.2
+Ns 16
+map_Kd alien_monstruo_mat2.png
+
+newmtl alien_monstruo_mat0
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.2 0.2 0.2
+Ns 16
+map_Kd alien_monstruo_mat0.png

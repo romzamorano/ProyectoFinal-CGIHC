@@ -1,0 +1,13 @@
+newmtl tillagemon_mat0
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.2 0.2 0.2
+Ns 16
+map_Kd tillagemon_mat0.png
+
+newmtl tillagemon_mat1
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.2 0.2 0.2
+Ns 16
+map_Kd tillagemon_mat1.png
