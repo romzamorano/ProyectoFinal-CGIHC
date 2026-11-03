@@ -19,7 +19,6 @@ Camera::Camera(glm::vec3 startPosition, glm::vec3 startUp, GLfloat startYaw, GLf
 void Camera::keyControl(bool* keys, GLfloat deltaTime)
 {
 	GLfloat velocity = moveSpeed * deltaTime;
-	if (keys[GLFW_KEY_LEFT_SHIFT]) velocity *= 10.0f; // Shift para viajar rapido de un planeta a otro
 
 	if (keys[GLFW_KEY_W]) position += front * velocity;
 	if (keys[GLFW_KEY_S]) position -= front * velocity;
@@ -30,7 +29,6 @@ void Camera::keyControl(bool* keys, GLfloat deltaTime)
 void Camera::keyControlPlaneta(bool* keys, GLfloat deltaTime, glm::vec3 centroPlaneta, float radioLimite, float alturaOjos)
 {
 	GLfloat velocity = moveSpeed * deltaTime;
-	if (keys[GLFW_KEY_LEFT_SHIFT]) velocity *= 3.0f; // Shift para correr sobre el planeta
 
 	// Vector de frente paralelo al plano XZ (componente Y = 0)
 	glm::vec3 frontXZ = getHorizontalDirection();

@@ -6,8 +6,8 @@
 #include<glew.h>
 #include<glm.hpp>
 #include<glfw3.h>
-#include <gtc/matrix_transform.hpp>
-#include<gtc/type_ptr.hpp>
+#include <gtc\matrix_transform.hpp>
+#include<gtc\type_ptr.hpp>
 #include "Mesh_tn.h"
 #include "Shader_light.h"
 class Skybox
