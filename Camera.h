@@ -2,7 +2,7 @@
 
 #include <glew.h>
 #include <glm.hpp>
-#include <gtc\matrix_transform.hpp>
+#include <gtc/matrix_transform.hpp>
 #include <glfw3.h>
 
 class Camera

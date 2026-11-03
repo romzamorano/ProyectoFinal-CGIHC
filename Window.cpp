@@ -1,21 +1,13 @@
 #include "Window.h"
 
-Window::Window()
-{
-	width = 800;
-	height = 600;
-	for (size_t i = 0; i < 1024; i++)
-	{
-		keys[i] = 0;
-	}
-}
+Window::Window() : Window(800, 600) {}
 
 Window::Window(GLint windowWidth, GLint windowHeight)
 {
 	width = windowWidth;
 	height = windowHeight;
 
-	camaraActiva = 1;               // Inicia en Planeta 1 (Extracción)
+	camaraActiva = 1;               // Inicia en Planeta 1 (Extraccion)
 	cambioCamaraPendiente = true;
 	linternaAvatar = true;          // Linterna encendida por defecto
 	anguloBrazoGoku = 0.0f;
@@ -32,12 +24,12 @@ int Window::Initialise()
 {
 	if (!glfwInit())
 	{
-		printf("Falló inicializar GLFW");
+		printf("Fallo inicializar GLFW");
 		glfwTerminate();
 		return 1;
 	}
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -54,16 +46,17 @@ int Window::Initialise()
 	glfwGetFramebufferSize(mainWindow, &bufferWidth, &bufferHeight);
 	glfwMakeContextCurrent(mainWindow);
 
+	glfwSetWindowUserPointer(mainWindow, this);
 	createCallbacks();
 
-	// Opcional: oculta el cursor para mover la cámara cómodamente
+	// Opcional: oculta el cursor para mover la camara comodamente
 	// glfwSetInputMode(mainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	glewExperimental = GL_TRUE;
 
 	if (glewInit() != GLEW_OK)
 	{
-		printf("Falló inicialización de GLEW");
+		printf("Fallo inicializacion de GLEW");
 		glfwDestroyWindow(mainWindow);
 		glfwTerminate();
 		return 1;
@@ -104,27 +97,33 @@ void Window::ManejaTeclado(GLFWwindow* window, int key, int code, int action, in
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
 
-	// Selección de Cámaras y Planetas (Teclas 1, 2, 3, 4)
+	// Seleccion de Camaras y Planetas (Teclas 1, 2, 3, 4)
 	if (key == GLFW_KEY_1 && action == GLFW_PRESS)
 	{
-		theWindow->camaraActiva = 1; // Exploración Planeta 1 (Extracción)
+		theWindow->camaraActiva = 1; // Exploracion Planeta 1 (Extraccion)
 		theWindow->cambioCamaraPendiente = true;
 	}
 	if (key == GLFW_KEY_2 && action == GLFW_PRESS)
 	{
-		theWindow->camaraActiva = 2; // Exploración Planeta 2 (Refinamiento)
+		theWindow->camaraActiva = 2; // Exploracion Planeta 2 (Refinamiento)
 		theWindow->cambioCamaraPendiente = true;
 	}
 	if (key == GLFW_KEY_3 && action == GLFW_PRESS)
 	{
-		theWindow->camaraActiva = 3; // Cámara Pista de Carreras / Vuelo
+		theWindow->camaraActiva = 3; // Camara Pista de Carreras / Vuelo
 		theWindow->cambioCamaraPendiente = true;
 	}
 	if (key == GLFW_KEY_4 && action == GLFW_PRESS)
 	{
-		theWindow->camaraActiva = 4; // Cámara Espacial Cinematográfica
+		theWindow->camaraActiva = 4; // Camara Espacial Cinematografica
 		theWindow->cambioCamaraPendiente = true;
 	}
+
+    if (key == GLFW_KEY_5 && action == GLFW_PRESS)
+    {
+        theWindow->camaraActiva = 5;
+        theWindow->cambioCamaraPendiente = true;
+    }
 
 	// Encender/Apagar Spotlight del Avatar Insectoide (Tecla L)
 	if (key == GLFW_KEY_L && action == GLFW_PRESS)
@@ -132,19 +131,7 @@ void Window::ManejaTeclado(GLFWwindow* window, int key, int code, int action, in
 		theWindow->linternaAvatar = !theWindow->linternaAvatar;
 	}
 
-	// Animación básica por teclado: Saludo de Goku (Teclas J y K)
-	if (key == GLFW_KEY_J)
-	{
-		if (theWindow->anguloBrazoGoku < 140.0f)
-			theWindow->anguloBrazoGoku += 5.0f;
-	}
-	if (key == GLFW_KEY_K)
-	{
-		if (theWindow->anguloBrazoGoku > 0.0f)
-			theWindow->anguloBrazoGoku -= 5.0f;
-	}
-
-	// Interacción con Mob, Sigismund o Rocky (Tecla M)
+	// Interaccion con Mob, Sigismund o Rocky (Tecla M)
 	if (key == GLFW_KEY_M && action == GLFW_PRESS)
 	{
 		theWindow->interaccionPersonajes = !theWindow->interaccionPersonajes;
@@ -174,8 +161,8 @@ void Window::ManejaMouse(GLFWwindow* window, double xPos, double yPos)
 		theWindow->mouseFirstMoved = false;
 	}
 
-	theWindow->xChange = xPos - theWindow->lastX;
-	theWindow->yChange = theWindow->lastY - yPos;
+	theWindow->xChange += static_cast<GLfloat>(xPos - theWindow->lastX);
+	theWindow->yChange += static_cast<GLfloat>(theWindow->lastY - yPos);
 
 	theWindow->lastX = xPos;
 	theWindow->lastY = yPos;
@@ -185,4 +172,12 @@ Window::~Window()
 {
 	glfwDestroyWindow(mainWindow);
 	glfwTerminate();
+}
+void Window::ActualizarAnimacionTeclado(GLfloat dt)
+{
+    const float velocidad = 90.0f;
+    if (keys[GLFW_KEY_J]) anguloBrazoGoku += velocidad * dt;
+    if (keys[GLFW_KEY_K]) anguloBrazoGoku -= velocidad * dt;
+    if (anguloBrazoGoku < 0) anguloBrazoGoku = 0;
+    if (anguloBrazoGoku > 140) anguloBrazoGoku = 140;
 }
