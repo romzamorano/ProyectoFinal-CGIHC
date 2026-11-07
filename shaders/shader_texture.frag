@@ -8,7 +8,7 @@ uniform sampler2D theTexture;
 void main()
 {
 
-	//color = texture(theTexture, TexCoord);
+	// Textura multiplicada por el color, asi se puede cambiar el tono del objeto desde C++
 	color = vColor*texture(theTexture, TexCoord);
-	
+
 }

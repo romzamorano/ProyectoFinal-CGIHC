@@ -1,5 +1,7 @@
 #version 330
 
+// Shader sencillo: solo color plano, sin textura ni luz
+
 layout (location = 0) in vec3 pos;
 layout (location = 1) in vec2 tex;
 layout (location = 2) in vec3 norm;
@@ -15,5 +17,5 @@ uniform vec3 color;
 void main()
 {
 	gl_Position = projection * view * model * vec4(pos, 1.0);
-	vColor=vec4(color,1.0f);
+	vColor=vec4(color,1.0f); // el color que se manda desde C++
 	}
