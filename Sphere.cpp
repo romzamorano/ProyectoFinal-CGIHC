@@ -1,9 +1,12 @@
 
 /*
 * Sphere.cpp
-*Basado en el código creado por
+* Basado en el codigo creado por
 *  Created on: 06/09/2016
-*      Author: reynaldo Martell
+*      Author: Reynaldo Martell
+*
+* Esfera generada por codigo con coordenadas esfericas: slices son las
+* divisiones horizontales (alrededor) y stacks las verticales (de polo a polo)
 */
 #include "Sphere.h"
 
@@ -12,6 +15,7 @@ Sphere::Sphere(float ratio, int slices, int stacks) :
 	ratio(ratio), slices(slices), stacks(stacks), VAO(0), VBO(0), EBO(0) {
 }
 
+// Libera los buffers de la esfera
 Sphere::~Sphere() {
 
 	glDisableVertexAttribArray(0);
@@ -31,26 +35,29 @@ Sphere::~Sphere() {
 
 
 
+// Calcula los vertices y los indices
 void Sphere::init() {
 		vertexC.resize(((slices + 1) * (stacks + 1)));
 	index.resize((slices * stacks + slices) * 6);
 	for (int i = 0; i <= stacks; ++i) {
 		float V = i / (float)stacks;
-		float phi = V * M_PI;
+		float phi = V * M_PI; // angulo vertical, de 0 a PI
 
 		for (int j = 0; j <= slices; ++j) {
 			float U = j / (float)slices;
-			float theta = U * M_PI * 2.0;
+			float theta = U * M_PI * 2.0; // angulo horizontal, de 0 a 2PI
 
+			// Coordenadas esfericas a cartesianas
 			float X = cos(theta) * sin(phi);
 			float Y = cos(phi);
 			float Z = sin(theta) * sin(phi);
 				vertexC[i * (slices + 1) + j].position = ratio
 					* glm::vec3(X, Y, Z);
-				vertexC[i * (slices + 1) + j].color = glm::sphericalRand(1.0);
+				vertexC[i * (slices + 1) + j].color = glm::sphericalRand(1.0); // color aleatorio por vertice
 		}
 	}
 
+	// Dos triangulos por cada cuadro de la malla
 	for (int i = 0; i < slices * stacks + slices; ++i) {
 		index[i * 6] = i;
 		index[i * 6 + 1] = i + slices + 1;
@@ -61,6 +68,7 @@ void Sphere::init() {
 	}
 }
 
+// Sube los vertices e indices a la GPU
 void Sphere::load() {
 
 	glGenVertexArrays(1, &VAO);
@@ -77,6 +85,7 @@ void Sphere::load() {
 	size_t offset2 = 0;
 	size_t offset3 = 0;
 
+		// Cada vertice tiene posicion y color (dos vec3)
 		glBufferData(GL_ARRAY_BUFFER, vertexC.size() * sizeof(glm::vec3) * 2,
 			vertexC.data(),
 			GL_STATIC_DRAW);
@@ -87,18 +96,18 @@ void Sphere::load() {
 		index.data(),
 		GL_STATIC_DRAW);
 
-	// First attribute
+	// Atributo 0: posicion
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (GLvoid*)offset1);
 	glEnableVertexAttribArray(0);
-	// Second attribute
+	// Atributo 1
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
 		(GLvoid*)offset2);
 	glEnableVertexAttribArray(1);
-	// Thrid attribute
+	// Atributo 2
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (GLvoid*)offset3);
 	glEnableVertexAttribArray(2);
 
-	glBindVertexArray(0); // Unbind VAO
+	glBindVertexArray(0);
 
 }
 

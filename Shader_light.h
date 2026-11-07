@@ -10,6 +10,7 @@
 #include "PointLight.h"
 #include "SpotLight.h"
 
+// Shader con iluminacion de Phong: una luz direccional, varias puntuales y varios spotlights
 class Shader
 {
 public:
@@ -20,6 +21,7 @@ public:
 
 	std::string ReadFile(const char* fileLocation);
 
+	// Ubicacion de los uniforms para mandarles valores desde el main
 	GLuint GetProjectionLocation();
 	GLuint GetModelLocation();
 	GLuint GetViewLocation();
@@ -47,6 +49,7 @@ private:
 	GLuint shaderID, uniformProjection, uniformModel, uniformColor, uniformView, uniformEyePosition,
 		uniformSpecularIntensity, uniformShininess;
 
+	// Un struct por tipo de luz con las ubicaciones de cada uno de sus campos en el shader
 	struct {
 		GLuint uniformcolor;
 		GLuint uniformAmbientIntensity;

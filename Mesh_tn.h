@@ -2,6 +2,7 @@
 #include <glew.h>
 #include <vector>
 
+// Malla solo con posicion, dibujada con indices
 class Mesh
 {
 public:
@@ -19,6 +20,7 @@ private:
 
 };
 
+// Malla con color por vertice, sin indices
 class MeshColor
 {
 public:
@@ -32,6 +34,7 @@ private:
 	GLsizei  vertexCount;
 };
 
+// Malla con posicion, UV y normal; la usan los modelos, los planetas y el skybox
 class MeshModel
 {
 public:

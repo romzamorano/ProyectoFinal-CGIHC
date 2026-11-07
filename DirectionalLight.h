@@ -1,12 +1,13 @@
 #pragma once
 #include "Light.h"
 
+// Luz direccional (el sol en el proyecto): hereda color e intensidades de Light
 class DirectionalLight :
 	public Light
 {
 public:
 	DirectionalLight();
-	DirectionalLight(GLfloat red, GLfloat green, GLfloat blue, 
+	DirectionalLight(GLfloat red, GLfloat green, GLfloat blue,
 					GLfloat aIntensity, GLfloat dIntensity,
 					GLfloat xDir, GLfloat yDir, GLfloat zDir);
 

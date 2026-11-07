@@ -1,13 +1,17 @@
 #include "Skybox.h"
 
+// Skybox: un cubo con una textura cubemap (6 imagenes) que siempre rodea a la camara
+
 
 
 Skybox::Skybox()
 {
 }
 
+// Recibe las 6 caras en el orden de GL_TEXTURE_CUBE_MAP: +X, -X, +Y, -Y, +Z, -Z
 Skybox::Skybox(std::vector<std::string> faceLocations)
 {
+	// El skybox tiene su propio shader, aparte del de iluminacion
 	skyShader = new Shader();
 	skyShader->CreateFromFiles("shaders/skybox.vert", "shaders/skybox.frag");
 	uniformProjection = skyShader->GetProjectionLocation();
@@ -19,25 +23,26 @@ Skybox::Skybox(std::vector<std::string> faceLocations)
 	for (size_t i = 0; i < 6; i++)
 	{
 
-		unsigned char *texData = stbi_load(faceLocations[i].c_str(), &width, &height, &bitDepth, 0); //el tipo unsigned char es para un array de bytes de la imagen, obtener datos de la imagen 
+		unsigned char *texData = stbi_load(faceLocations[i].c_str(), &width, &height, &bitDepth, 0); // bytes de la imagen
 		if (!texData)
 		{
-			printf("No se encontró : %s", faceLocations[i].c_str());
+			printf("No se encontro : %s", faceLocations[i].c_str());
 			return;
 		}
-		//para cambiar el origen a la esquina inferior izquierda como necesitamos
-		//stbi_set_flip_vertically_on_load(true);
+		// Si la imagen trae canal alfa se carga como RGBA, si no como RGB
 		GLenum formato = (bitDepth == 4) ? GL_RGBA : GL_RGB;
+		// Las caras del cubemap son constantes seguidas, por eso basta con sumar i
 		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, formato, width, height, 0, formato, GL_UNSIGNED_BYTE, texData);
-		stbi_image_free(texData); //para liberar la información de la imagen
+		stbi_image_free(texData); // ya se paso a la GPU, se libera
 	}
+	// CLAMP_TO_EDGE evita que se vean lineas en las uniones entre caras
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	//Creando el Mesh del skybox
+	// Cubo de lado 2 centrado en el origen
 	unsigned int skyboxIndices[] = {
 		// front
 		0, 1, 2,
@@ -59,6 +64,8 @@ Skybox::Skybox(std::vector<std::string> faceLocations)
 		3, 6, 7
 	};
 
+	// Se usa el formato de MeshModel (8 floats), pero UV y normales van en 0:
+	// el shader del skybox toma la coordenada del cubemap de la posicion
 	float skyboxVertices[] = {
 		-1.0f, 1.0f, -1.0f,		0.0f, 0.0f,		0.0f, 0.0f, 0.0f,//v0
 		-1.0f, -1.0f, -1.0f,	0.0f, 0.0f,		0.0f, 0.0f, 0.0f,//V1
@@ -76,15 +83,17 @@ Skybox::Skybox(std::vector<std::string> faceLocations)
 
 void Skybox::DrawSkybox(glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
 {
+	// Se quita la traslacion de la vista (solo queda la rotacion) para que
+	// el cielo se mueva al girar la camara pero nunca se pueda alcanzar
 	viewMatrix = glm::mat4(glm::mat3(viewMatrix));
 
+	// Sin escribir en el depth buffer, asi todo lo demas se dibuja encima
 	glDepthMask(false);
 	skyShader->UseShader();
 	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 	glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(viewMatrix));
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textureId);
-	//skyShader->Validate();
 	skyMesh->RenderMeshModel();
 	glDepthMask(true);
 

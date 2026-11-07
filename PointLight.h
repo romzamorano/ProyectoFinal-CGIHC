@@ -1,6 +1,7 @@
 #pragma once
 #include "Light.h"
 
+// Luz puntual: posicion mas los tres factores de atenuacion
 class PointLight :
 	public Light
 {
@@ -17,7 +18,7 @@ public:
 
 	~PointLight();
 
-protected:
+protected: // SpotLight hereda de esta clase y usa estos datos
 	glm::vec3 position;
 
 	GLfloat constant, linear, exponent;

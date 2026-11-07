@@ -1,7 +1,9 @@
 /*
- * PROYECTO FINAL:
- * Computación Gráfica e Interacción Humano-Computadora
- * Versión con Modelos Unificados
+ * Proyecto Final - Computacion Grafica e Interaccion Humano-Computadora
+ *
+ * Sistema de dos planetas: uno de extraccion y otro de refinamiento.
+ * Incluye avatar jerarquico, personajes animados, cinturon de asteroides,
+ * estacion espacial, lanzamiento de cohete, ciclo dia/noche y varias camaras.
  */
 #define STB_IMAGE_IMPLEMENTATION
 
@@ -13,8 +15,8 @@
 #include <glew.h>
 #include <glfw3.h>
 #include <glm.hpp>
-#include <gtc\matrix_transform.hpp>
-#include <gtc\type_ptr.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
 
 #include "Window.h"
 #include "Mesh_tn.h"
@@ -23,8 +25,20 @@
 #include "Texture.h"
 #include "Model.h"
 #include "Skybox.h"
+#include "AvatarJerarquico.h"
+#include "CamarasProyecto.h"
+#include "AmbienteEscenario.h"
+#include "LanzamientoEspacial.h"
+#include "EstacionEspacial.h"
+#include "RecorridoGoku.h"
+#include "PlantaRefinamiento.h"
+#include "ZonaExtraccion.h"
+ZonaExtraccion mineria;
+#include "TillagemonJerarquico.h" // Tillagemon armado por piezas (reposo, horquillazo y azoton)
+#include "SigismundJerarquico.h"  // Sigismund armado por piezas, dispara la pistola bolter
+#include "ReflectoresPista.h"     // reflectores de la pista con su spotlight
 
- // Iluminación
+// Iluminacion
 #include "CommonValues.h"
 #include "DirectionalLight.h"
 #include "PointLight.h"
@@ -34,12 +48,30 @@
 const float toRadians = 3.14159265f / 180.0f;
 const float PI = 3.14159265f;
 
-Window mainWindow;
+Window mainWindow(1366, 768);
 std::vector<MeshModel*> meshListModel;
 std::vector<Shader> shaderList;
-Camera camera;
 
-// Skyboxes espaciales para cada planeta
+// Camaras libres: una por planeta para el avatar y otra panoramica
+Camera camera;
+Camera camaraRefinamiento;
+Camera camaraPanoramica;
+
+// Elementos grandes de la escena (cada uno vive en su propio .h)
+AvatarJerarquico avatar;
+RecorridosProyecto recorridos;
+AmbienteEscenario ambiente;
+LanzamientoEspacial lanzamiento;
+EstacionEspacial estacion;
+PlantaRefinamiento refineria;
+
+// Vista y posicion del ojo de la camara que este activa en el frame
+glm::mat4 vistaActiva(1);
+glm::vec3 ojoActivo(0);
+int planetaAvatar = 0; // 0 = extraccion, 1 = refinamiento
+
+
+// Un skybox distinto para cada planeta
 Skybox skyboxPlanetaExtraccion;
 Skybox skyboxPlanetaRefinamiento;
 
@@ -50,24 +82,31 @@ Texture texEsferaPlaneta1;
 Texture texEsferaPlaneta2;
 Texture texPlana;
 
-// Modelos 3D Unificados
+// Modelos
 Model Asteroide_M;
-Model AvatarInsectoide_M;  // Avatar
-Model Sigismund_M;         // Sigismund
-Model Mob_M;               // Mob
-Model Rocky_M;             // Rocky
-Model Goku_M;              // Goku
+SigismundJerarquico sigismundAnimado; // tecla F: saca la pistola y le dispara al Tillagemon
+ReflectoresPista reflectores;          // 6 reflectores de la pista (Z X C G H N, Q todos)
+Model Mob_M;
+Model Rocky_M;
+Model RocaMob_M;                       // rocas que levanta Mob
+Model Goku_M;
+
+// Fauna hostil del planeta de extraccion
+TillagemonJerarquico tillagemonAnimado; // el jefe, animado por piezas
+Model Alien_M;             // alien agachado
+Model AlienMonstruo_M;     // alien de patas largas
+Model AlienAlado_M;        // alien con alas que vuela en circulos
+Model Satelite_M;          // satelite en orbita del planeta de refinamiento
 
 // Materiales
 Material Material_brillante;
 Material Material_opaco;
 
-// Tiempo
+// Tiempo (deltaTime en segundos)
 GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
-static double limitFPS = 1.0 / 60.0;
 
-// Iluminación
+// Luces
 DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
 SpotLight spotLights[MAX_SPOT_LIGHTS];
@@ -75,367 +114,725 @@ SpotLight spotLights[MAX_SPOT_LIGHTS];
 static const char* vShader = "shaders/shader_light.vert";
 static const char* fShader = "shaders/shader_light.frag";
 
-// Coordenadas de los dos Planetas
-const glm::vec3 centroPlaneta1(0.0f, 0.0f, 0.0f);       // Planeta 1: Extracción
-const glm::vec3 centroPlaneta2(300.0f, 0.0f, -300.0f);  // Planeta 2: Refinamiento
-const float radioTerrenoCaminable = 45.0f;
-const float radioEsferaPlaneta = 65.0f;
+// ---------- Planetas ----------
+const glm::vec3 centroPlaneta1(0.0f, 0.0f, 0.0f);         // Planeta 1: extraccion
+const glm::vec3 centroPlaneta2(2100.0f, 0.0f, -2100.0f);  // Planeta 2: refinamiento
+const float radioTerrenoCaminable = 450.0f; // disco plano donde camina el avatar
+const float radioEsferaPlaneta = 650.0f;
+// Hundimos la esfera lo necesario para que su corte tenga el mismo radio que el disco caminable
+const float profundidadCentroPlaneta = std::sqrt(
+    radioEsferaPlaneta * radioEsferaPlaneta - radioTerrenoCaminable * radioTerrenoCaminable);
 const float alturaOjosCamara = 3.0f;
 
-// Factores de escala por modelo
-const float ESCALA_ASTEROIDE = 0.05f;
-const float ESCALA_INSECTOIDE = 0.05f;
-const float ESCALA_SIGISMUND = 0.15f;
-const float ESCALA_MOB = 450.0f;
-const float ESCALA_ROCKY = 4.0f;
-const float ESCALA_GOKU = 3.0f;
+// ---------- Escalas de cada modelo ----------
+const float ESCALA_ASTEROIDE = 0.5f;
+const float ESCALA_INSECTOIDE = 0.30f;
+const float ESCALA_SIGISMUND = 15.0f;
+const float ESCALA_MOB = 2050.0f;
+const float ESCALA_ROCKY = 30.0f;
+const float ESCALA_GOKU = 15.0f;
+const float ESCALA_TILLAGEMON = 10.6f;     // ~70 unidades de alto
+const float ESCALA_ALIEN = 0.40f;          // ~28 de alto
+const float ESCALA_ALIEN_MONSTRUO = 3.7f;  // ~35 de alto
+const float ESCALA_ALIEN_ALADO = 4.2f;     // ~20 de alto, ~49 de ala a ala
 
-const float OFFSET_YAW_INSECTOIDE = 180.0f;
+const float OFFSET_YAW_INSECTOIDE = 180.0f; // el modelo del insecto viene volteado
 
-// Estructura para asteroides en órbita
+// ---------- Cinturon de asteroides ----------
 struct DatosAsteroide {
-	float radioOrbita;
-	float velocidadOrbita;
-	float anguloInicial;
-	float alturaBase;
-	float amplitudVertical;
-	glm::vec3 escala;
-	glm::vec3 ejeRotacion;
-	float velocidadRotacionPropia;
+    float radioOrbita;
+    float velocidadOrbita;
+    float anguloInicial;
+    float alturaBase;
+    float amplitudVertical;
+    glm::vec3 escala;
+    glm::vec3 ejeRotacion;
+    float velocidadRotacionPropia;
 };
 std::vector<DatosAsteroide> cinturonAsteroides;
 
+// Genera los asteroides con valores distintos usando el indice (sin rand, asi siempre salen igual)
 void InicializarAsteroides(int cantidad)
 {
-	for (int i = 0; i < cantidad; i++)
-	{
-		DatosAsteroide ast;
-		ast.radioOrbita = 300.0f + (i * 8.0f);
-		ast.velocidadOrbita = 0.03f + (i % 5) * 0.01f;
-		ast.anguloInicial = i * (360.0f / cantidad) * toRadians;
-		ast.alturaBase = -15.0f + (i % 7) * 5.0f;
-		ast.amplitudVertical = 4.0f + (i % 4) * 1.5f;
-		float s = 0.5f + (i % 4) * 0.35f;
-		ast.escala = glm::vec3(s, s, s);
-		ast.ejeRotacion = glm::normalize(glm::vec3(1.0f, (i % 3) + 0.5f, (i % 2) + 0.2f));
-		ast.velocidadRotacionPropia = 20.0f + (i * 8.0f);
-		cinturonAsteroides.push_back(ast);
-	}
+    for (int i = 0; i < cantidad; i++)
+    {
+        DatosAsteroide ast;
+        ast.radioOrbita = 2300.0f + (i * 50.0f); // el anillo pasa por fuera de los dos planetas
+        ast.velocidadOrbita = 0.03f + (i % 5) * 0.01f;
+        ast.anguloInicial = i * (360.0f / cantidad) * toRadians;
+        ast.alturaBase = -15.0f + (i % 7) * 5.0f;
+        ast.amplitudVertical = 4.0f + (i % 4) * 1.5f;
+        float s = 0.5f + (i % 4) * 0.35f;
+        // Escala diferente en cada eje para que no se vean como esferas iguales
+        ast.escala = glm::vec3(s * (0.8f + (i % 3) * 0.2f), s * (0.7f + (i % 5) * 0.12f), s * (0.9f + (i % 2) * 0.3f));
+        ast.ejeRotacion = glm::normalize(glm::vec3(1.0f, (i % 3) + 0.5f, (i % 2) + 0.2f));
+        ast.velocidadRotacionPropia = 20.0f + (i * 8.0f);
+        cinturonAsteroides.push_back(ast);
+    }
 }
 
-// Genera una esfera con coordenadas UV y normales para los cuerpos planetarios
+// Cuerpo del planeta: empieza en el borde del suelo plano, baja con una curva
+// suave (Hermite) y termina en la esfera, asi no se nota la union.
 void CrearEsferaTexturizada(float radio, int meridianos, int paralelos)
 {
-	std::vector<GLfloat> vertices;
-	std::vector<unsigned int> indices;
-
-	for (int i = 0; i <= paralelos; ++i)
-	{
-		float v = (float)i / (float)paralelos;
-		float phi = v * PI;
-
-		for (int j = 0; j <= meridianos; ++j)
-		{
-			float u = (float)j / (float)meridianos;
-			float theta = u * 2.0f * PI;
-
-			float nx = cos(theta) * sin(phi);
-			float ny = cos(phi);
-			float nz = sin(theta) * sin(phi);
-
-			vertices.push_back(radio * nx);
-			vertices.push_back(radio * ny);
-			vertices.push_back(radio * nz);
-			vertices.push_back(u);
-			vertices.push_back(v);
-			vertices.push_back(-nx);
-			vertices.push_back(-ny);
-			vertices.push_back(-nz);
-		}
-	}
-
-	for (int i = 0; i < paralelos; ++i)
-	{
-		for (int j = 0; j < meridianos; ++j)
-		{
-			int p1 = i * (meridianos + 1) + j;
-			int p2 = p1 + (meridianos + 1);
-
-			indices.push_back(p1);
-			indices.push_back(p2);
-			indices.push_back(p1 + 1);
-
-			indices.push_back(p1 + 1);
-			indices.push_back(p2);
-			indices.push_back(p2 + 1);
-		}
-	}
-
-	MeshModel* esfera = new MeshModel();
-	esfera->CreateMeshModel(vertices.data(), indices.data(), (unsigned int)vertices.size(), (unsigned int)indices.size());
-	meshListModel.push_back(esfera); // meshListModel[1]
+    std::vector<GLfloat> vertices;
+    std::vector<unsigned int> indices;
+    const int filasTransicion = 16;
+    const float radioUnion = 580.0f; // radio donde la curva se junta con la esfera
+    const float ancho = radioUnion - radioTerrenoCaminable;
+    const float alturaEsfera = std::sqrt(radio * radio - radioUnion * radioUnion);
+    const float yFinal = alturaEsfera - profundidadCentroPlaneta;
+    const float pendienteFinal = -radioUnion / alturaEsfera;
+    const float phiUnion = std::asin(radioUnion / radio);
+    for (int i = 0; i <= paralelos; ++i)
+    {
+        float r, y;
+        glm::vec2 normalPerfil;
+        if (i <= filasTransicion)
+        {
+            // Tramo de transicion: curva de Hermite entre el suelo y la esfera
+            float t = static_cast<float>(i) / filasTransicion;
+            float t2 = t * t, t3 = t2 * t;
+            r = radioTerrenoCaminable + ancho * t;
+            // Coincide en altura y pendiente con el suelo y con la esfera
+            y = (-2 * t3 + 3 * t2) * yFinal + (t3 - t2) * ancho * pendienteFinal;
+            float pendiente = ((-6 * t2 + 6 * t) * yFinal +
+                (3 * t2 - 2 * t) * ancho * pendienteFinal) / ancho;
+            normalPerfil = glm::normalize(glm::vec2(-pendiente, 1));
+            y += profundidadCentroPlaneta;
+        }
+        else
+        {
+            // Resto de la esfera
+            float t = static_cast<float>(i - filasTransicion) / (paralelos - filasTransicion);
+            float phi = phiUnion + t * (PI - phiUnion);
+            r = radio * std::sin(phi);
+            y = radio * std::cos(phi);
+            normalPerfil = glm::vec2(std::sin(phi), std::cos(phi));
+        }
+        for (int j = 0; j <= meridianos; ++j)
+        {
+            float u = static_cast<float>(j) / meridianos;
+            float a = 2 * PI * j / meridianos, c = std::cos(a), z = std::sin(a);
+            // Normales invertidas porque asi las espera el shader de la clase
+            vertices.insert(vertices.end(), { r * c, y, r * z, u,
+                static_cast<float>(i) / paralelos,
+                -normalPerfil.x * c, -normalPerfil.y, -normalPerfil.x * z });
+        }
+    }
+    for (int i = 0; i < paralelos; ++i)
+        for (int j = 0; j < meridianos; ++j)
+        {
+            unsigned int p1 = i * (meridianos + 1) + j, p2 = p1 + meridianos + 1;
+            indices.insert(indices.end(), { p1, p2, p1 + 1, p1 + 1, p2, p2 + 1 });
+        }
+    MeshModel* esfera = new MeshModel();
+    esfera->CreateMeshModel(vertices.data(), indices.data(),
+        static_cast<unsigned int>(vertices.size()), static_cast<unsigned int>(indices.size()));
+    meshListModel.push_back(esfera);
 }
 
 void CreateObjects()
 {
-	unsigned int floorIndices[] = {
-		0, 2, 1,
-		1, 2, 3
-	};
-
-	GLfloat floorVertices[] = {
-		-1.0f, 0.0f, -1.0f,   0.0f,  0.0f,   0.0f, -1.0f, 0.0f,
-		 1.0f, 0.0f, -1.0f,  10.0f,  0.0f,   0.0f, -1.0f, 0.0f,
-		-1.0f, 0.0f,  1.0f,   0.0f, 10.0f,   0.0f, -1.0f, 0.0f,
-		 1.0f, 0.0f,  1.0f,  10.0f, 10.0f,   0.0f, -1.0f, 0.0f
-	};
-
-	MeshModel* pisoPlaneta = new MeshModel();
-	pisoPlaneta->CreateMeshModel(floorVertices, floorIndices, 32, 6);
-	meshListModel.push_back(pisoPlaneta); // meshListModel[0] = Piso caminable XZ
-
-	CrearEsferaTexturizada(radioEsferaPlaneta, 36, 36);
+    // Disco de radio 1 en el plano XZ; al dibujarlo se escala al radio caminable
+    const int segmentos = 256; // suficientes para que el borde se vea redondo
+    std::vector<GLfloat> vertices = { 0, 0, 0, 5, 5, 0, -1, 0 };
+    std::vector<unsigned int> indices;
+    for (int i = 0; i <= segmentos; ++i)
+    {
+        float angulo = 2 * PI * i / segmentos;
+        float x = std::cos(angulo), z = std::sin(angulo);
+        vertices.insert(vertices.end(), { x, 0, z, (x + 1) * 5, (z + 1) * 5, 0, -1, 0 });
+        if (i < segmentos)
+            indices.insert(indices.end(), { 0u, static_cast<unsigned int>(i + 2), static_cast<unsigned int>(i + 1) });
+    }
+    MeshModel* pisoPlaneta = new MeshModel();
+    pisoPlaneta->CreateMeshModel(vertices.data(), indices.data(),
+        static_cast<unsigned int>(vertices.size()), static_cast<unsigned int>(indices.size()));
+    meshListModel.push_back(pisoPlaneta);
+    // La esfera usa los mismos segmentos que el disco para que no queden huecos en la orilla
+    CrearEsferaTexturizada(radioEsferaPlaneta, segmentos, 80);
 }
 
 void CreateShaders()
 {
-	Shader* shader1 = new Shader();
-	shader1->CreateFromFiles(vShader, fShader);
-	shaderList.push_back(*shader1);
+    Shader* shader1 = new Shader();
+    shader1->CreateFromFiles(vShader, fShader);
+    shaderList.push_back(*shader1);
 }
 
 int main()
 {
-	mainWindow = Window(1366, 768);
-	mainWindow.Initialise();
+    if (mainWindow.Initialise() != 0) return 1;
 
-	CreateObjects();
-	CreateShaders();
-	InicializarAsteroides(10);
+    CreateObjects();
+    CreateShaders();
 
-	camera = Camera(glm::vec3(0.0f, alturaOjosCamara, 20.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f, 0.35f, 0.5f);
+    // Carga de los modulos de la escena; si falta algo se avisa en consola y se sale
+    if (!ambiente.Cargar(radioTerrenoCaminable)) { std::puts("Fallo al cargar ambiente: revisar Models/Ambiente y Textures."); return 1; }
+    reflectores.Cargar();
+    if (!lanzamiento.Cargar(centroPlaneta2))
+    {
+        std::puts("Faltan recursos de Models/Lanzamiento. Copia todas las carpetas del ZIP.");
+        return 1;
+    }
+    recorridos.apoyoTransporte = ambiente.AlturaApoyoTransporte();
+    if (!estacion.Cargar()) { std::puts("Faltan recursos de la estacion espacial."); return 1; }
+    if (!refineria.Cargar(centroPlaneta2)) { std::puts("Faltan recursos de la planta de refinamiento."); return 1; }
+    if(!mineria.Cargar(centroPlaneta1)){std::puts("Faltan recursos de extraccion.");return 1;}
+    InicializarAsteroides(10);
 
-	// Texturas
-	texSueloExtraccion = Texture("Textures/sueloextraccion.png");
-	texSueloExtraccion.LoadTextureA();
+    // Posiciones iniciales de las camaras
+    camera = Camera(glm::vec3(-190.0f, alturaOjosCamara, 130.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f, 64.0f, 0.5f);
+    camaraRefinamiento = Camera(centroPlaneta2 + glm::vec3(-150, alturaOjosCamara, 180), glm::vec3(0, 1, 0), -90, 0, 64.0f, 0.5f);
+    camaraPanoramica = Camera(glm::vec3(1050, 900, 900), glm::vec3(0, 1, 0), -90, -25, 50, 0.5f); // ve hacia el punto medio entre los planetas
 
-	texSueloRefinamiento = Texture("Textures/suelorefinamiento.png");
-	texSueloRefinamiento.LoadTextureA();
+    // ---------- Texturas ----------
+    texSueloExtraccion = Texture("Textures/sueloextraccion.png");
+    texSueloExtraccion.LoadTextureA();
 
-	texEsferaPlaneta1 = Texture("Textures/sueloextraccion.png");
-	texEsferaPlaneta1.LoadTextureA();
+    texSueloRefinamiento = Texture("Textures/suelorefinamiento.png");
+    texSueloRefinamiento.LoadTextureA();
 
-	texEsferaPlaneta2 = Texture("Textures/suelorefinamiento.png");
-	texEsferaPlaneta2.LoadTextureA();
+    texEsferaPlaneta1 = Texture("Textures/sueloextraccion.png");
+    texEsferaPlaneta1.LoadTextureA();
 
-	texPlana = Texture("Textures/plain.png");
-	texPlana.LoadTextureA();
+    texEsferaPlaneta2 = Texture("Textures/suelorefinamiento.png");
+    texEsferaPlaneta2.LoadTextureA();
 
-	// Skyboxes
-	std::vector<std::string> skyboxFacesP1 = {
-		"Textures/Skybox/right.png", "Textures/Skybox/left.png",
-		"Textures/Skybox/bottom.png", "Textures/Skybox/top.png",
-		"Textures/Skybox/front.png", "Textures/Skybox/back.png"
-	};
-	skyboxPlanetaExtraccion = Skybox(skyboxFacesP1);
-	skyboxPlanetaRefinamiento = Skybox(skyboxFacesP1);
+    texPlana = Texture("Textures/plain.png");
+    texPlana.LoadTextureA();
 
-	// Carga de modelos y muestra de tiempo de carga en terminal para debuggear
-	double t0 = glfwGetTime();
-	Asteroide_M.LoadModel("Models/asteroide.obj");
-	printf("asteroide: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
-	AvatarInsectoide_M.LoadModel("Models/insectoide.obj");
-	printf("insectoide: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
-	Sigismund_M.LoadModel("Models/sigismund.obj");
-	printf("sigismund: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
-	Mob_M.LoadModel("Models/mob.obj");
-	printf("mob: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
-	Rocky_M.LoadModel("Models/rocky.obj");
-	printf("rocky: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
-	Goku_M.LoadModel("Models/goku.obj");
-	printf("goku: %.2f s\n", glfwGetTime() - t0);
+    // ---------- Skyboxes ----------
+    std::vector<std::string> skyboxFacesP1 = {
+        "Textures/Skybox/right.png", "Textures/Skybox/left.png",
+        "Textures/Skybox/bottom.png", "Textures/Skybox/top.png",
+        "Textures/Skybox/front.png", "Textures/Skybox/back.png"
+    };
+    skyboxPlanetaExtraccion = Skybox(skyboxFacesP1);
 
-	Material_brillante = Material(1.0f, 32);
-	Material_opaco = Material(0.3f, 4);
+    // Las caras van en el mismo orden que en el planeta 1
+    std::vector<std::string> skyboxFacesP2 = {
+        "Textures/Skybox2/right.png", "Textures/Skybox2/left.png",
+        "Textures/Skybox2/bottom.png", "Textures/Skybox2/top.png",
+        "Textures/Skybox2/front.png", "Textures/Skybox2/back.png"
+    };
+    skyboxPlanetaRefinamiento = Skybox(skyboxFacesP2);
 
-	mainLight = DirectionalLight(1.0f, 1.0f, 1.0f, 0.3f, 0.8f, 0.0f, -1.0f, -0.5f);
+    // ---------- Modelos ----------
+    // Se imprime cuanto tarda cada uno para ubicar los que hacen lenta la carga
+    double t0 = glfwGetTime();
+    Asteroide_M.LoadModel("Models/asteroide.obj");
+    printf("asteroide: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
+    if (!avatar.Cargar())
+    {
+        std::puts("Faltan piezas del avatar. Conserva la carpeta Models/Avatar y sus materiales.");
+        return 1;
+    }
+    printf("insectoide: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
+    sigismundAnimado.Cargar(); // piezas, pistola y proyectil (Models/Sigismund_por_piezas)
+    printf("sigismund: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
+    Mob_M.LoadModel("Models/mob.obj");
+    printf("mob: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
+    Rocky_M.LoadModel("Models/rocky.obj");
+    printf("rocky: %.2f s\n", glfwGetTime() - t0); t0 = glfwGetTime();
+    Goku_M.LoadModel("Models/goku.obj");
+    RocaMob_M.LoadModel("Models/Refinamiento/Mineral_Bruto.obj");
+    if (!Goku_M.EstaCargado() || !RocaMob_M.EstaCargado())
+    {
+        std::puts("Faltan recursos para los movimientos de Goku o Mob.");
+        return 1;
+    }
+    printf("goku: %.2f s\n", glfwGetTime() - t0);
+    t0 = glfwGetTime();
+    tillagemonAnimado.Cargar(); // sus 19 piezas (Models/Tillagemon_por_piezas)
+    Alien_M.LoadModel("Models/alien.obj");
+    AlienMonstruo_M.LoadModel("Models/alien_monstruo.obj");
+    AlienAlado_M.LoadModel("Models/alien_alado.obj");
+    Satelite_M.LoadModel("Models/Satelite/satelite.obj"); // usa satelite_a_color.png y satelite_b_color.png
+    printf("fauna hostil: %.2f s\n", glfwGetTime() - t0);
 
-	spotLights[0] = SpotLight(0.8f, 1.0f, 0.9f, 0.0f, 2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -0.2f, -1.0f, 1.0f, 0.02f, 0.001f, 22.0f);
+    Material_brillante = Material(1.0f, 32);
+    Material_opaco = Material(0.3f, 4);
 
-	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
-		uniformSpecularIntensity = 0, uniformShininess = 0, uniformColor = 0;
+    mainLight = DirectionalLight(1.0f, 1.0f, 1.0f, 0.3f, 0.8f, 0.0f, -1.0f, -0.5f);
 
-	glm::mat4 projection = glm::perspective(45.0f, (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 2000.0f);
+    // Linterna del avatar (su posicion se actualiza cada frame)
+    spotLights[0] = SpotLight(0.8f, 1.0f, 0.9f, 0.0f, 2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -0.2f, -1.0f, 1.0f, 0.02f, 0.001f, 22.0f);
 
-	GLfloat now = 0.0f;
-	glm::mat4 model(1.0f);
-	glm::vec3 color(1.0f, 1.0f, 1.0f);
+    GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
+        uniformSpecularIntensity = 0, uniformShininess = 0, uniformColor = 0;
 
-	while (!mainWindow.getShouldClose())
-	{
-		now = glfwGetTime();
-		deltaTime = now - lastTime;
-		deltaTime += (now - lastTime) / limitFPS;
-		lastTime = now;
+    // Far grande para alcanzar a ver el otro planeta; near en 0.5 para evitar z-fighting
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.5f, 8000.0f);
 
-		glfwPollEvents();
-		bool* keys = mainWindow.getsKeys();
-		GLint camActiva = mainWindow.getCamaraActiva();
+    GLfloat now = 0.0f;
+    glm::mat4 model(1.0f);
+    glm::vec3 color(1.0f, 1.0f, 1.0f);
 
-		if (mainWindow.getCambioCamaraPendiente())
-		{
-			if (camActiva == 1) camera.setCameraPosition(centroPlaneta1 + glm::vec3(0.0f, alturaOjosCamara, 20.0f), -90.0f, 0.0f);
-			else if (camActiva == 2) camera.setCameraPosition(centroPlaneta2 + glm::vec3(0.0f, alturaOjosCamara, 20.0f), -90.0f, 0.0f);
-			else if (camActiva == 3) camera.setCameraPosition(centroPlaneta1 + glm::vec3(0.0f, 8.0f, 35.0f), -90.0f, -10.0f);
-			else if (camActiva == 4) camera.setCameraPosition(glm::vec3(150.0f, 120.0f, 120.0f), -90.0f, -25.0f);
-			mainWindow.confirmarCambioCamara();
-		}
+    // Uniforms extra que agregamos al shader (no vienen en la clase Shader)
+    shaderList[0].UseShader();
+    GLint programaTerreno = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &programaTerreno);
+    const GLint uniformCorteAlfa = glGetUniformLocation(programaTerreno, "corteAlfa");
+    const GLint uniformEmision = glGetUniformLocation(programaTerreno, "emision");
+    const GLint uniformUsarMapaEmision = glGetUniformLocation(programaTerreno, "usarMapaEmision");
+    const GLint uniformMapaEmision = glGetUniformLocation(programaTerreno, "mapaEmision");
+    const GLint uniformOpacidad = glGetUniformLocation(programaTerreno, "opacidad");
+    const GLint uniformTerreno = glGetUniformLocation(programaTerreno, "texturaTerreno");
+    const GLint uniformOrigenTerreno = glGetUniformLocation(programaTerreno, "origenTerreno");
+    const GLint uniformRocaProcedural = glGetUniformLocation(programaTerreno, "rocaProcedural"); // color de roca calculado en el shader
+    const GLint uniformSemilla = glGetUniformLocation(programaTerreno, "semilla");               // cambia el patron de cada asteroide
 
-		if (camActiva == 1) camera.keyControlPlaneta(keys, deltaTime, centroPlaneta1, radioTerrenoCaminable, alturaOjosCamara);
-		else if (camActiva == 2) camera.keyControlPlaneta(keys, deltaTime, centroPlaneta2, radioTerrenoCaminable, alturaOjosCamara);
-		else camera.keyControl(keys, deltaTime);
+    // Mipmaps en las texturas de los planetas para que no parpadeen de lejos
+    Texture* texturasPlanetas[] = { &texSueloExtraccion, &texSueloRefinamiento,
+        &texEsferaPlaneta1, &texEsferaPlaneta2 };
+    for (Texture* textura : texturasPlanetas)
+    {
+        textura->UseTexture();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    }
+    lastTime = static_cast<GLfloat>(glfwGetTime());
 
-		camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
+    // Controles en consola
+    std::puts("1 P1 | 2 P2 | 3 transporte | 4 panorama libre | 5 carrera | Shift correr");
+    std::puts("6 Plataforma | B Lanzar cohete (cuenta atras 3 s) | R Reiniciar cohete | L Linterna");
+    std::puts("7 Estacion y atraques | 8 Seguir lanzadera | 3 Transporte con escala en la estacion");
+    std::puts("9 Seguir a Goku en su nube");
+    std::puts("0 Vista de la refineria | M Pausar/reanudar produccion | 2 Explorar con el avatar");
+    std::puts("P Vista de la mina | V Ciclo del taladro | 1 Explorar extraccion");
+    std::puts("T/Y Ataques del Tillagemon | F Sigismund dispara | Z X C G H N Reflectores 1-6 | Q Todos los reflectores");
+    std::puts("U Levitacion de Mob");
+    std::puts("I Rocky inspecciona la consola");
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Donde estan parados Rocky y Mob (tambien se usan para sus camaras)
+    const glm::vec3 sueloRocky = centroPlaneta2 + glm::vec3(-100, 0, -100);
+    const glm::vec3 sueloMob = centroPlaneta1 + glm::vec3(-290, 0, 0);
 
-		if (camActiva == 2) skyboxPlanetaRefinamiento.DrawSkybox(camera.calculateViewMatrix(), projection);
-		else skyboxPlanetaExtraccion.DrawSkybox(camera.calculateViewMatrix(), projection);
+    while (!mainWindow.getShouldClose())
+    {
+        now = glfwGetTime();
+        deltaTime = now - lastTime;
+        lastTime = now;
+        glfwPollEvents();
+        mainWindow.ActualizarAnimacionTeclado(deltaTime);
+        bool* keys = mainWindow.getsKeys();
+        GLint camActiva = mainWindow.getCamaraActiva();
 
-		shaderList[0].UseShader();
-		uniformModel = shaderList[0].GetModelLocation();
-		uniformProjection = shaderList[0].GetProjectionLocation();
-		uniformView = shaderList[0].GetViewLocation();
-		uniformEyePosition = shaderList[0].GetEyePositionLocation();
-		uniformColor = shaderList[0].getColorLocation();
-		uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
-		uniformShininess = shaderList[0].GetShininessLocation();
+        // ================= ACTUALIZACION =================
+        VueloGoku vueloGoku = CalcularVueloGoku(now, centroPlaneta2,
+            AmbienteEscenario::ApoyoEnPiso(Goku_M, ESCALA_GOKU));
+        lanzamiento.Actualizar(deltaTime, keys);
+        mineria.Actualizar(deltaTime,keys[GLFW_KEY_V]);
+        refineria.Actualizar(deltaTime, mainWindow.getInteraccionPersonajes());
 
-		glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
-		glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
-		glm::vec3 posCam = camera.getCameraPosition();
-		glUniform3f(uniformEyePosition, posCam.x, posCam.y, posCam.z);
+        // Movimiento del avatar (camaras 1 y 2) o de la camara libre (4)
+        float distanciaAvatar = 0;
+        if (camActiva == 1 || camActiva == 2)
+        {
+            planetaAvatar = camActiva - 1;
+            Camera& control = planetaAvatar == 0 ? camera : camaraRefinamiento;
+            const glm::vec3& centro = planetaAvatar == 0 ? centroPlaneta1 : centroPlaneta2;
+            glm::vec3 antes = control.getCameraPosition();
+            control.keyControlPlaneta(keys, deltaTime, centro, radioTerrenoCaminable, alturaOjosCamara);
+            control.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
 
-		// Iluminación solar
-		float anguloSol = (now / 120.0f) * 2.0f * PI;
-		float intensidadSol = glm::clamp((sin(anguloSol) + 1.0f) * 0.5f, 0.15f, 0.9f);
-		mainLight = DirectionalLight(1.0f, 0.98f, 0.9f, intensidadSol * 0.4f, intensidadSol, cos(anguloSol), -abs(sin(anguloSol)) - 0.2f, -0.3f);
-		shaderList[0].SetDirectionalLight(&mainLight);
-		shaderList[0].SetPointLights(pointLights, 0);
+            // Si el avatar se sale del disco, lo regresamos a la orilla
+            glm::vec3 posicion = control.getCameraPosition();
+            glm::vec3 offset(posicion.x - centro.x, 0, posicion.z - centro.z);
+            float distanciaCentro = glm::length(offset);
+            const float margenAvatar = 50.0f * ESCALA_INSECTOIDE; // depende del tamano del insecto
+            float limite = radioTerrenoCaminable - margenAvatar;
+            if (distanciaCentro > limite)
+            {
+                offset *= limite / distanciaCentro;
+                posicion.x = centro.x + offset.x;
+                posicion.z = centro.z + offset.z;
+                glm::vec3 frente = control.getCameraDirection();
+                float yaw = glm::degrees(std::atan2(frente.z, frente.x));
+                float pitch = glm::degrees(std::asin(glm::clamp(frente.y, -1.0f, 1.0f)));
+                control.setCameraPosition(posicion, yaw, pitch);
+            }
+            distanciaAvatar = glm::length(control.getCameraPosition() - antes);
+        }
+        else if (camActiva == 4)
+        {
+            camaraPanoramica.keyControl(keys, deltaTime);
+            camaraPanoramica.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
+        }
+        else { mainWindow.getXChange(); mainWindow.getYChange(); } // se leen para que no se acumule el movimiento del mouse
+        if (mainWindow.getCambioCamaraPendiente()) mainWindow.confirmarCambioCamara();
 
-		glm::vec3 dirHoriz = camera.getHorizontalDirection();
-		spotLights[0].SetFlash(posCam + dirHoriz * 4.5f + glm::vec3(0.0f, 1.2f, 0.0f), camera.getCameraDirection());
-		unsigned int spotActivas = mainWindow.getLinternaAvatar() ? 1 : 0;
-		shaderList[0].SetSpotLights(spotLights, spotActivas);
+        // El avatar se coloca donde esta su camara, mirando hacia donde ve
+        Camera& controlAvatar = planetaAvatar == 0 ? camera : camaraRefinamiento;
+        const glm::vec3& centroActual = planetaAvatar == 0 ? centroPlaneta1 : centroPlaneta2;
+        glm::vec3 posAvatar = controlAvatar.getCameraPosition();
+        posAvatar.y = centroActual.y;
+        glm::vec3 dirAvatar = controlAvatar.getHorizontalDirection();
+        float yawAvatar = std::atan2(dirAvatar.x, dirAvatar.z) + OFFSET_YAW_INSECTOIDE * toRadians;
+        float pitchAvatar = std::asin(glm::clamp(controlAvatar.getCameraDirection().y, -1.0f, 1.0f));
+        avatar.Actualizar(deltaTime, distanciaAvatar * 0.05f / ESCALA_INSECTOIDE, pitchAvatar); // el paso de las patas va segun lo que avanzo
+        avatar.Preparar(posAvatar, yawAvatar, ESCALA_INSECTOIDE);
+        recorridos.Actualizar(deltaTime, centroPlaneta1, centroPlaneta2);
 
-		// 1. Renderizar Planeta 1 y Planeta 2
-		color = glm::vec3(1.0f, 1.0f, 1.0f);
-		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+        // Reflectores: cada tecla prende o apaga uno y Q todos; prendidos siguen a su nave
+        GLint reflectorPedido = mainWindow.tomarReflector();
+        if (reflectorPedido == 6) reflectores.AlternarTodos();
+        else if (reflectorPedido >= 0) reflectores.Alternar(reflectorPedido);
+        reflectores.Actualizar(centroPlaneta1, recorridos);
 
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, centroPlaneta1);
-		model = glm::scale(model, glm::vec3(radioTerrenoCaminable, 1.0f, radioTerrenoCaminable));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		texSueloExtraccion.UseTexture();
-		Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		meshListModel[0]->RenderMeshModel();
+        // Tillagemon: T = horquillazo, Y = azoton; al terminar vuelve solo al reposo
+        GLint ataqueTillagemon = mainWindow.tomarAtaqueTillagemon();
+        if (ataqueTillagemon != 0) tillagemonAnimado.Atacar(ataqueTillagemon);
+        tillagemonAnimado.Actualizar();
 
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, centroPlaneta1 + glm::vec3(0.0f, -radioEsferaPlaneta - 0.1f, 0.0f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		texEsferaPlaneta1.UseTexture();
-		meshListModel[1]->RenderMeshModel();
+        // Sigismund: con F dispara tres veces al Tillagemon y cada impacto lo sacude
+        if (mainWindow.tomarDisparoSigismund()) sigismundAnimado.Disparar();
+        sigismundAnimado.Actualizar(centroPlaneta1 + glm::vec3(-260.0f, 0.006f, -170.0f), ESCALA_SIGISMUND,
+            centroPlaneta1 + glm::vec3(-50.0f, 67.8f, -300.0f)); // su posicion y el punto del pecho del Tillagemon al que apunta
+        int impactos = sigismundAnimado.TomarImpactos();
+        for (int i = 0; i < impactos; i++) tillagemonAnimado.RecibirGolpe();
 
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, centroPlaneta2);
-		model = glm::scale(model, glm::vec3(radioTerrenoCaminable, 1.0f, radioTerrenoCaminable));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		texSueloRefinamiento.UseTexture();
-		Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		meshListModel[0]->RenderMeshModel();
+        // ================= CAMARA ACTIVA =================
+        if (camActiva == 1 || camActiva == 2)
+        {
+            // Tercera persona: detras y arriba del insecto
+            glm::vec3 objetivo = posAvatar + glm::vec3(0, 56.0f * ESCALA_INSECTOIDE, 0); // altura de la cabeza
+            ojoActivo = objetivo - controlAvatar.getCameraDirection() * (240.0f * ESCALA_INSECTOIDE);
+            ojoActivo.y = glm::max(ojoActivo.y, centroActual.y + 16.0f * ESCALA_INSECTOIDE); // que no se meta bajo el piso
+            vistaActiva = glm::lookAt(ojoActivo, objetivo, glm::vec3(0, 1, 0));
+        }
+        else if (camActiva == 3)
+        {
+            // Sigue al transporte tal como se dibuja, a una distancia segun su tamaño
+            ObjetivoSeguimiento transporteVisto = ambiente.TransporteDibujado(recorridos);
+            vistaActiva = estacion.VistaTransporte(recorridos, transporteVisto, ambiente.LargoTransporte(), ojoActivo);
+        }
+        else if (camActiva == 14)
+        {
+            // Rocky revisando la consola
+            ojoActivo = sueloRocky + glm::vec3(-65, 38, -14);
+            const glm::vec3 centroInspeccion = sueloRocky + glm::vec3(-13, 9, 15);
+            vistaActiva = glm::lookAt(ojoActivo, centroInspeccion, glm::vec3(0, 1, 0));
+        }
+        else if (camActiva == 12)
+        {
+            // Mob levitando; la vista sube junto con el
+            ojoActivo = sueloMob + glm::vec3(23, 24, 51);
+            vistaActiva = glm::lookAt(ojoActivo, sueloMob + glm::vec3(0, 17.0f + mainWindow.getAlturaMob() * 0.5f, 0), glm::vec3(0, 1, 0));
+        }
+        else if (camActiva == 11)
+            vistaActiva = mineria.Vista(ojoActivo);
+        else if (camActiva == 10)
+            vistaActiva = refineria.Vista(ojoActivo);
+        else if (camActiva == 9)
+        {
+            // Detras de Goku mientras vuela en la nube
+            glm::vec3 objetivo = vueloGoku.posicion + glm::vec3(0,6,0);
+            ojoActivo = objetivo - vueloGoku.frente * 52.0f + glm::vec3(0, 20, 0);
+            vistaActiva = glm::lookAt(ojoActivo,objetivo,glm::vec3(0,1,0));
+        }
+        else if (camActiva == 7)
+            vistaActiva = estacion.Vista(recorridos.centroEstacion, ojoActivo);
+        else if (camActiva == 8)
+            vistaActiva = estacion.VistaLanzadera(recorridos, ojoActivo);
+        else if (camActiva == 6)
+            vistaActiva = lanzamiento.Vista(ojoActivo);
+        else if (camActiva == 5)
+            vistaActiva = VistaSeguimiento(recorridos.carrera, 2.5f * ambiente.LargoNave(), 0.8f * ambiente.LargoNave(), ojoActivo); // distancia segun el largo de la nave
+        else
+        {
+            // Camara panoramica libre
+            vistaActiva = camaraPanoramica.calculateViewMatrix();
+            ojoActivo = camaraPanoramica.getCameraPosition();
+        }
 
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, centroPlaneta2 + glm::vec3(0.0f, -radioEsferaPlaneta - 0.1f, 0.0f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		texEsferaPlaneta2.UseTexture();
-		meshListModel[1]->RenderMeshModel();
+        // ================= DIBUJO =================
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// 2. Cinturón de Asteroides
-		glm::vec3 centroSistema = (centroPlaneta1 + centroPlaneta2) * 0.5f;
-		texPlana.UseTexture();
-		for (size_t i = 0; i < cinturonAsteroides.size(); i++)
-		{
-			const DatosAsteroide& ast = cinturonAsteroides[i];
-			float anguloOrbita = ast.anguloInicial + (now * ast.velocidadOrbita);
-			float x = centroSistema.x + ast.radioOrbita * cos(anguloOrbita);
-			float z = centroSistema.z + ast.radioOrbita * sin(anguloOrbita);
-			float y = ast.alturaBase + ast.amplitudVertical * sin(now * 0.6f + ast.anguloInicial);
+        // Se usa el skybox del planeta que quede mas cerca de la camara
+        float distP1 = glm::length(ojoActivo - centroPlaneta1);
+        float distP2 = glm::length(ojoActivo - centroPlaneta2);
+        if (distP2 < distP1) skyboxPlanetaRefinamiento.DrawSkybox(vistaActiva, projection);
+        else skyboxPlanetaExtraccion.DrawSkybox(vistaActiva, projection);
 
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, glm::vec3(x, y, z));
-			model = glm::rotate(model, glm::radians(now * ast.velocidadRotacionPropia), ast.ejeRotacion);
-			model = glm::scale(model, ast.escala * ESCALA_ASTEROIDE);
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
-			Asteroide_M.RenderModel();
-		}
+        shaderList[0].UseShader();
+        uniformModel = shaderList[0].GetModelLocation();
+        uniformProjection = shaderList[0].GetProjectionLocation();
+        uniformView = shaderList[0].GetViewLocation();
+        uniformEyePosition = shaderList[0].GetEyePositionLocation();
+        uniformColor = shaderList[0].getColorLocation();
+        uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
+        uniformShininess = shaderList[0].GetShininessLocation();
 
-		// 3. Personajes Planeta 1 (Sigismund y Mob)
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, centroPlaneta1 + glm::vec3(-5.0f, 0.0f, -10.0f));
-		model = glm::scale(model, glm::vec3(ESCALA_SIGISMUND));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		Sigismund_M.RenderModel();
+        glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(vistaActiva));
+        glm::vec3 posCam = ojoActivo;
+        glUniform3f(uniformEyePosition, posCam.x, posCam.y, posCam.z);
 
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, centroPlaneta1 + glm::vec3(-15.0f, 1.0f, -10.0f));
-		model = glm::rotate(model, glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(ESCALA_MOB));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		Mob_M.RenderModel();
+        // Valores por defecto: sin emision y totalmente opaco
+        glUniform3f(uniformEmision, 0, 0, 0);
+        glUniform1f(uniformOpacidad, 1);
+        glUniform1i(uniformUsarMapaEmision, 0);
 
-		// 4. Personajes Planeta 2 (Rocky y Goku sobre la Nube)
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, centroPlaneta2 + glm::vec3(-10.0f, 2.0f, -10.0f));
-		model = glm::scale(model, glm::vec3(ESCALA_ROCKY));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		Rocky_M.RenderModel();
+        // ---------- Luces ----------
+        // Ciclo dia/noche de 120 s: el sol gira y cambia su intensidad
+        float anguloSol = (now / 120.0f) * 2.0f * PI;
+        float intensidadSol = glm::clamp((sin(anguloSol) + 1.0f) * 0.5f, 0.15f, 0.9f);
+        mainLight = DirectionalLight(1.0f, 0.98f, 0.9f, intensidadSol * 0.4f, intensidadSol, cos(anguloSol), -abs(sin(anguloSol)) - 0.2f, -0.3f);
+        shaderList[0].SetDirectionalLight(&mainLight);
 
-		// Goku (oscilación senoidal vertical)
-		float yNube = 3.5f + 0.6f * sin(now * 2.5f);
-		glm::vec3 posGokuNube = centroPlaneta2 + glm::vec3(-15.0f, yNube, -10.0f);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, posGokuNube);
-		model = glm::scale(model, glm::vec3(ESCALA_GOKU));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		Goku_M.RenderModel();
+        // De noche se prenden las luminarias de la plataforma, la refineria y la mina
+        const float noche = intensidadSol < 0.35f ? 1.0f : 0.0f;
+        unsigned int lucesPuntuales = 0;
+        if (noche > 0)
+        {
+            for (int i = 0; i < 2; ++i)
+            {
+                glm::vec3 p = lanzamiento.PosicionLuminaria(i);
+                pointLights[lucesPuntuales++] = PointLight(0.35f, 0.8f, 1.0f, 0.0f, 5.5f,
+                    p.x, p.y, p.z, 1.0f, 0.015f, 0.0008f);
+            }
+            for (int i = 0; i < 2; ++i)
+            {
+                glm::vec3 p = refineria.PosicionLuminaria(i);
+                pointLights[lucesPuntuales++] = PointLight(0.55f,0.85f,1.0f,0.0f,4.5f,
+                    p.x,p.y,p.z,1.0f,0.025f,0.0015f);
+            }
+        }
+        if(noche>0){auto p=mineria.PosicionLuminaria();pointLights[lucesPuntuales++]=PointLight(1,.65f,.25f,0,5,p.x,p.y,p.z,1,.025f,.0015f);}
 
-		// 5. Avatar Insectoide
-		if (camActiva == 1 || camActiva == 2)
-		{
-			glm::vec3 centroPlanetaActual = (camActiva == 2) ? centroPlaneta2 : centroPlaneta1;
-			glm::vec3 posAvatar = posCam + dirHoriz * 4.5f;
-			posAvatar.y = centroPlanetaActual.y;
+        // Luz naranja del motor mientras el cohete despega
+        if (lanzamiento.MotorActivo())
+        {
+            glm::vec3 p = lanzamiento.PosicionMotor();
+            pointLights[lucesPuntuales++] = PointLight(1.0f, 0.42f, 0.12f, 0.0f, 5.0f,
+                p.x, p.y, p.z, 1.0f, 0.02f, 0.001f);
+        }
+        // Destello en el canon de la pistola de Sigismund al disparar
+        if (sigismundAnimado.FogonazoActivo())
+        {
+            glm::vec3 canon = sigismundAnimado.PosicionCanon();
+            pointLights[lucesPuntuales++] = PointLight(1.0f, 0.75f, 0.3f, 0.0f, 3.0f,
+                canon.x, canon.y, canon.z, 0.3f, 0.01f, 0.0005f);
+        }
+        shaderList[0].SetPointLights(pointLights, lucesPuntuales);
 
-			float yawAvatar = atan2(dirHoriz.x, dirHoriz.z);
+        // La linterna sale de la cabeza del avatar
+        spotLights[0].SetFlash(avatar.PosicionLinterna(), avatar.DireccionLinterna());
+        unsigned int spotActivas = mainWindow.getLinternaAvatar() ? 1 : 0;
+        // Se juntan la linterna (si esta prendida) y los reflectores encendidos
+        SpotLight lucesSpot[MAX_SPOT_LIGHTS];
+        if (spotActivas == 1) lucesSpot[0] = spotLights[0];
+        spotActivas = static_cast<unsigned int>(reflectores.AgregarLuces(lucesSpot, static_cast<int>(spotActivas), MAX_SPOT_LIGHTS));
+        shaderList[0].SetSpotLights(lucesSpot, spotActivas);
 
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, posAvatar);
-			model = glm::rotate(model, yawAvatar + OFFSET_YAW_INSECTOIDE * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(ESCALA_INSECTOIDE));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
-			AvatarInsectoide_M.RenderModel();
-		}
+        // ---------- 1. Planetas ----------
+        // texturaTerreno hace que el suelo y la esfera usen la misma escala de textura
+        glUniform1i(uniformTerreno, 1);
+        glUniform3fv(uniformOrigenTerreno, 1, glm::value_ptr(centroPlaneta1));
+        color = glm::vec3(1.0f, 1.0f, 1.0f);
+        glUniform3fv(uniformColor, 1, glm::value_ptr(color));
 
-		glUseProgram(0);
-		mainWindow.swapBuffers();
-	}
+        // Planeta 1: suelo plano
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, centroPlaneta1);
+        model = glm::scale(model, glm::vec3(radioTerrenoCaminable, 1.0f, radioTerrenoCaminable));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        texSueloExtraccion.UseTexture();
+        Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        meshListModel[0]->RenderMeshModel();
 
-	return 0;
+        // Planeta 1: cuerpo esferico
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, centroPlaneta1 + glm::vec3(0.0f, -profundidadCentroPlaneta, 0.0f));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        texEsferaPlaneta1.UseTexture();
+        meshListModel[1]->RenderMeshModel();
+
+        // Planeta 2: suelo plano
+        model = glm::mat4(1.0f);
+        glUniform3fv(uniformOrigenTerreno, 1, glm::value_ptr(centroPlaneta2));
+        model = glm::translate(model, centroPlaneta2);
+        model = glm::scale(model, glm::vec3(radioTerrenoCaminable, 1.0f, radioTerrenoCaminable));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        texSueloRefinamiento.UseTexture();
+        Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        meshListModel[0]->RenderMeshModel();
+
+        // Planeta 2: cuerpo esferico
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, centroPlaneta2 + glm::vec3(0.0f, -profundidadCentroPlaneta, 0.0f));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        texEsferaPlaneta2.UseTexture();
+        meshListModel[1]->RenderMeshModel();
+
+        // Los demas modelos usan sus propias UV
+        glUniform1i(uniformTerreno, 0);
+
+        // ---------- 2. Cinturon de asteroides ----------
+        // Orbitan alrededor del punto medio entre los dos planetas
+        glm::vec3 centroSistema = (centroPlaneta1 + centroPlaneta2) * 0.5f;
+        texPlana.UseTexture();
+        glUniform1i(uniformRocaProcedural, 1); // el color de la roca se calcula con ruido en el shader
+        for (size_t i = 0; i < cinturonAsteroides.size(); i++)
+        {
+            const DatosAsteroide& ast = cinturonAsteroides[i];
+            float anguloOrbita = ast.anguloInicial + (now * ast.velocidadOrbita);
+            float x = centroSistema.x + ast.radioOrbita * cos(anguloOrbita);
+            float z = centroSistema.z + ast.radioOrbita * sin(anguloOrbita);
+            float y = ast.alturaBase + ast.amplitudVertical * sin(now * 0.6f + ast.anguloInicial); // sube y baja un poco
+
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(x, y, z));
+            model = glm::rotate(model, glm::radians(now * ast.velocidadRotacionPropia), ast.ejeRotacion);
+            model = glm::scale(model, ast.escala * ESCALA_ASTEROIDE);
+            glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+            Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
+            glUniform1f(uniformSemilla, static_cast<float>(i) * 17.3f + 3.1f); // semilla distinta = crateres y tono distintos
+            Asteroide_M.RenderModel();
+        }
+
+        glUniform1i(uniformRocaProcedural, 0);
+        glUniform3f(uniformColor,1,1,1);
+
+        // Satelite: orbita al planeta 2 (una vuelta cada ~78 s) con un vaiven vertical;
+        // se gira con la orbita para que los paneles queden siempre tangentes
+        float anguloSatelite = now * 0.08f;
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, centroPlaneta2 + glm::vec3(900.0f * cos(anguloSatelite), 420.0f + 25.0f * sin(now * 0.5f), 900.0f * sin(anguloSatelite)));
+        model = glm::rotate(model, -anguloSatelite, glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(15.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(30.0f));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        Satelite_M.RenderModel();
+
+        // ---------- 3. Personajes del planeta 1 (Sigismund y Mob) ----------
+        Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        sigismundAnimado.Dibujar(uniformModel); // incluye la pistola y los proyectiles
+
+        // Mob: el modelo viene de cabeza, por eso se rota 180 en X
+        model = glm::mat4(1.0f);
+        const float alturaMob = mainWindow.getAlturaMob();
+        const float apoyoMob = AmbienteEscenario::ApoyoEnPiso(Mob_M, ESCALA_MOB, true);
+        model = glm::translate(model, sueloMob + glm::vec3(0, apoyoMob + alturaMob, 0));
+        model = glm::rotate(model, glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(ESCALA_MOB));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        Mob_M.RenderModel();
+
+        // Mientras Mob levita, levanta tres rocas que brillan en morado
+        if (alturaMob > 0)
+        {
+            const glm::vec3 posicionesRoca[] = {{-9, 0, 4}, {8, 0, 5}, {0, 0, -8}};
+            glUniform3f(uniformColor, 0.78f, 0.43f, 1.0f);
+            glUniform3f(uniformEmision, 0.45f, 0.15f, 1.0f);
+            for (const glm::vec3& posicion : posicionesRoca)
+            {
+                glm::mat4 roca = glm::translate(glm::mat4(1), sueloMob + posicion + glm::vec3(0, alturaMob, 0));
+                roca = glm::scale(roca, glm::vec3(1.6f));
+                glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(roca));
+                RocaMob_M.RenderModel();
+            }
+            glUniform3f(uniformEmision, 0, 0, 0);
+            glUniform3f(uniformColor, 1, 1, 1);
+        }
+
+        // ---------- 4. Personajes del planeta 2 (Rocky y Goku) ----------
+        model = glm::mat4(1.0f);
+        const float apoyoRocky = AmbienteEscenario::ApoyoEnPiso(Rocky_M, ESCALA_ROCKY);
+        model = glm::translate(model, sueloRocky + glm::vec3(0, apoyoRocky, 0));
+        model = glm::rotate(model, glm::radians(mainWindow.getGiroRocky()), glm::vec3(0, 1, 0));
+        model = glm::scale(model, glm::vec3(ESCALA_ROCKY));
+        // Rocky se inclina desde su borde de enfrente, abajo, para no atravesar el piso
+        const glm::vec3 pivoteRocky(0, Rocky_M.getMinimo().y, Rocky_M.getMaximo().z);
+        model = glm::translate(model, pivoteRocky);
+        model = glm::rotate(model, glm::radians(mainWindow.getInclinacionRocky()), glm::vec3(1, 0, 0));
+        model = glm::translate(model, -pivoteRocky);
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        Rocky_M.RenderModel();
+
+        // Goku y su nube recorren una elipse, girando hacia donde avanzan
+        model = glm::translate(glm::mat4(1), vueloGoku.posicion);
+        model = glm::rotate(model, vueloGoku.giroY, glm::vec3(0,1,0));
+        model = glm::rotate(model, vueloGoku.inclinacion, glm::vec3(0,0,1));
+        model = glm::scale(model, glm::vec3(ESCALA_GOKU));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        // Sin brillo especular para que no se vea de plastico
+        glUniform1f(uniformSpecularIntensity, 0.0f);
+        glUniform1f(uniformShininess, 1.0f);
+        glUniform3f(uniformEmision, 0.18f, 0.18f, 0.18f);
+        Goku_M.RenderModel();
+        glUniform3f(uniformEmision, 0, 0, 0);
+
+        // ---------- 5. Avatar (cuerpo, cabeza y cuatro patas) ----------
+        avatar.Dibujar(uniformModel, uniformColor, uniformSpecularIntensity, uniformShininess);
+
+        // ---------- 6. Fauna hostil del planeta 1 ----------
+        // Va del lado -X junto a Sigismund y Mob, porque la pista ocupa el lado +X
+        Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
+
+        // Tillagemon: la matriz base se pasa a la clase, que acomoda cada pieza
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, centroPlaneta1 + glm::vec3(-50.0f, 2.79f, -300.0f)); // 2.79 lo deja parado sobre el suelo
+        model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(ESCALA_TILLAGEMON));
+        tillagemonAnimado.Dibujar(model, uniformModel);
+
+       model = glm::mat4(1.0f);
+       model = glm::translate(model, centroPlaneta1 + glm::vec3(-80.0f, AmbienteEscenario::ApoyoEnPiso(Alien_M, ESCALA_ALIEN), -150.0f));
+       model = glm::rotate(model, glm::radians(-60.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+       model = glm::scale(model, glm::vec3(ESCALA_ALIEN));
+       glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+       Alien_M.RenderModel();
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, centroPlaneta1 + glm::vec3(-200.0f, AmbienteEscenario::ApoyoEnPiso(AlienMonstruo_M, ESCALA_ALIEN_MONSTRUO), -250.0f));
+        model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(ESCALA_ALIEN_MONSTRUO));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        AlienMonstruo_M.RenderModel();
+
+        // Alien alado: vuela en circulos sobre Sigismund y Mob, subiendo y bajando
+        float anguloVuelo = now * 0.25f;
+        glm::vec3 posVuelo = centroPlaneta1 + glm::vec3(-220.0f + 140.0f * cos(anguloVuelo), 90.0f + 6.0f * sin(now * 1.5f), 20.0f + 140.0f * sin(anguloVuelo));
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posVuelo);
+        model = glm::rotate(model, std::atan2(-sin(anguloVuelo), cos(anguloVuelo)), glm::vec3(0.0f, 1.0f, 0.0f)); // mira hacia donde va
+        model = glm::rotate(model, glm::radians(-15.0f), glm::vec3(0.0f, 0.0f, 1.0f)); // ladeado hacia adentro de la vuelta
+        model = glm::scale(model, glm::vec3(ESCALA_ALIEN_ALADO));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        AlienAlado_M.RenderModel();
+
+        // ---------- 7. Escenario y estructuras ----------
+        // Pista, naves y demas elementos del ambiente
+        Material_opaco.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        ambiente.Dibujar(centroPlaneta1, centroPlaneta2, recorridos,
+            uniformModel, uniformColor, uniformCorteAlfa);
+
+        // Reflectores (aqui tambien se acomoda su spotlight en el lente)
+        Material_brillante.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        reflectores.Dibujar(centroPlaneta1, uniformModel);
+
+        mineria.Dibujar(uniformModel,uniformColor,uniformSpecularIntensity,uniformShininess,uniformEmision,uniformUsarMapaEmision,uniformMapaEmision,noche);
+
+        refineria.Dibujar(uniformModel,uniformColor,uniformSpecularIntensity,
+            uniformShininess,uniformEmision,noche);
+
+        estacion.Dibujar(recorridos, uniformModel, uniformColor, uniformSpecularIntensity,
+            uniformShininess, uniformEmision, uniformUsarMapaEmision, uniformMapaEmision, now);
+
+        // Va al final porque el humo es transparente y tiene que mezclarse con todo lo demas
+        lanzamiento.Dibujar(uniformModel, uniformColor, uniformSpecularIntensity,
+            uniformShininess, uniformEmision, uniformOpacidad, ojoActivo, noche, now);
+
+        glUseProgram(0);
+        mainWindow.swapBuffers();
+    }
+
+    return 0;
 }
