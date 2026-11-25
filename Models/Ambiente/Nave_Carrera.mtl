@@ -1,0 +1,20 @@
+newmtl Parte0
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd nave_metal_oscuro.png
+
+newmtl Parte1
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd nave_metal_oscuro.png
+
+newmtl Parte2
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd nave_luces_azules.png

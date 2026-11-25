@@ -1,0 +1,7 @@
+newmtl Cubierta
+Kd 1 1 1
+map_Kd ../../Textures/estacion_muelle.png
+
+newmtl Clara
+Kd 1 1 1
+map_Kd ../../Textures/estacion_metal_claro.png

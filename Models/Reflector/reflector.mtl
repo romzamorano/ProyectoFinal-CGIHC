@@ -1,0 +1,40 @@
+# Reflector Halo AdiXXioN - CC-BY-4.0
+newmtl Reflector
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.6 0.6 0.6
+Ns 48
+d 1.000
+map_Kd reflector_reflector.png
+
+newmtl Marco
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.6 0.6 0.6
+Ns 48
+d 1.000
+map_Kd reflector_marco.png
+
+newmtl Tuercas_001
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.6 0.6 0.6
+Ns 48
+d 1.000
+map_Kd reflector_tuercas_001.png
+
+newmtl Vidrio_de_foco
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.6 0.6 0.6
+Ns 48
+d 0.894
+map_Kd reflector_vidrio_de_foco.png
+
+newmtl Agarradera
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.6 0.6 0.6
+Ns 48
+d 1.000
+map_Kd reflector_agarradera.png

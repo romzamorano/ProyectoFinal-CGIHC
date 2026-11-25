@@ -1,7 +1,8 @@
 #pragma once
 
 #include <glew.h>
-//Esta clase está pensada para crear materiales asignables a nuestros diferentes objetos y luces
+
+// Material que se le asigna a cada objeto: define como refleja la luz especular
 class Material
 {
 public:
@@ -12,8 +13,8 @@ public:
 
 	~Material();
 
-private: 
-	GLfloat specularIntensity;
-	GLfloat shininess;
+private:
+	GLfloat specularIntensity; // que tan fuerte es el brillo
+	GLfloat shininess;         // que tan concentrado es el brillo
 };
 

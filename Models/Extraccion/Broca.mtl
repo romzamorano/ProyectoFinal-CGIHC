@@ -1,0 +1,3 @@
+newmtl Metal
+Kd 1 1 1
+map_Kd ../../Textures/lanz_metal.png

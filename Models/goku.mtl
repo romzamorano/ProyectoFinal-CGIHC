@@ -1,42 +1,69 @@
-# Blender MTL File: 'Goku Diorama.blend'
-# Material Count: 4
+newmtl Zona_0
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
 
-newmtl 7_-nimbus_0_0_0
-Ns 323.999994
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+newmtl Zona_1
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
 
-newmtl 7_-staffhand_0.1_16_16
-Ns 323.999994
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+newmtl Zona_11
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
 
-newmtl 7_body_0.1_16_16
-Ns 323.999994
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+newmtl Zona_2
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
 
-newmtl 7_head_0.1_16_16
-Ns 323.999994
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+newmtl Zona_3
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
+
+newmtl Zona_4
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
+
+newmtl Zona_5
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
+
+newmtl Zona_6
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
+
+newmtl Zona_7
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd personajes_materiales.png
+
+newmtl Zona_rostro
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+Ns 1
+map_Kd goku_rostro.png

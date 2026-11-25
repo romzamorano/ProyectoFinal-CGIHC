@@ -1,0 +1,34 @@
+newmtl Parte0
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd capsula_color_0.png
+
+newmtl Parte1
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd capsula_color_1.png
+
+newmtl Parte2
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd capsula_color_2.png
+
+newmtl Parte3
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd capsula_color_3.png
+
+newmtl Parte4
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd capsula_color_4.png

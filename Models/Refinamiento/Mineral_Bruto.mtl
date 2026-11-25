@@ -1,0 +1,4 @@
+newmtl Roca
+Kd 1 1 1
+map_Kd ../../Textures/asteroide_roca.png
+

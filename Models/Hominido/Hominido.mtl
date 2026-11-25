@@ -1,0 +1,13 @@
+newmtl Piel
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.3 0.3 0.3
+Ns 16
+map_Kd hominido_color.png
+
+newmtl Blaster
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.8 0.8 0.8
+Ns 64
+map_Kd hominido_blaster.png

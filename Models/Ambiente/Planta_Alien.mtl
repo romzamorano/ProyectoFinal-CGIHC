@@ -1,0 +1,13 @@
+newmtl Parte0
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd planta_hojas.png
+
+newmtl Parte1
+Kd 1 1 1
+Ka 1 1 1
+Ks 0.3 0.3 0.3
+Ns 48
+map_Kd planta_cuerpo.jpg

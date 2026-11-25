@@ -1,5 +1,8 @@
 #include "Shader_light.h"
 
+// Shader con iluminacion: compila el vertex y fragment shader y guarda la
+// ubicacion de los uniforms (matrices, material y luces)
+
 Shader::Shader()
 {
 	shaderID = 0;
@@ -15,6 +18,7 @@ void Shader::CreateFromString(const char* vertexCode, const char* fragmentCode)
 	CompileShader(vertexCode, fragmentCode);
 }
 
+// Lee los shaders desde archivo (shaders/*.vert y *.frag)
 void Shader::CreateFromFiles(const char* vertexLocation, const char* fragmentLocation)
 {
 	std::string vertexString = ReadFile(vertexLocation);
@@ -25,6 +29,7 @@ void Shader::CreateFromFiles(const char* vertexLocation, const char* fragmentLoc
 	CompileShader(vertexCode, fragmentCode);
 }
 
+// Lee el archivo linea por linea y lo regresa como un solo string
 std::string Shader::ReadFile(const char* fileLocation)
 {
 	std::string content;
@@ -62,6 +67,7 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 	GLint result = 0;
 	GLchar eLog[1024] = { 0 };
 
+	// Se ligan los dos shaders en un programa y se revisa que no haya errores
 	glLinkProgram(shaderID);
 	glGetProgramiv(shaderID, GL_LINK_STATUS, &result);
 	if (!result)
@@ -80,6 +86,7 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 		return;
 	}
 
+	// Ubicacion de los uniforms; los nombres deben coincidir con los del .frag y .vert
 	uniformProjection = glGetUniformLocation(shaderID, "projection");
 	uniformModel = glGetUniformLocation(shaderID, "model");
 	uniformView = glGetUniformLocation(shaderID, "view");
@@ -92,6 +99,8 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 	uniformEyePosition = glGetUniformLocation(shaderID, "eyePosition");
 	uniformColor = glGetUniformLocation(shaderID, "color");
 
+	// Luces puntuales: en el shader son un arreglo de structs, por eso se arma
+	// el nombre de cada campo con snprintf (pointLights[0].position, etc.)
 	uniformPointLightCount = glGetUniformLocation(shaderID, "pointLightCount");
 
 	for (size_t i = 0; i < MAX_POINT_LIGHTS; i++)
@@ -120,6 +129,8 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 		uniformPointLight[i].uniformExponent = glGetUniformLocation(shaderID, locBuff);
 	}
 
+	// Spotlights: igual que las puntuales, pero con direccion y borde (edge).
+	// Tienen base.base porque el spotlight hereda de la puntual y esta de Light
 	uniformSpotLightCount = glGetUniformLocation(shaderID, "spotLightCount");
 
 	for (size_t i = 0; i < MAX_SPOT_LIGHTS; i++)
@@ -156,6 +167,7 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 
 }
 
+// Getters de las ubicaciones de los uniforms
 GLuint Shader::GetProjectionLocation()
 {
 	return uniformProjection;
@@ -207,6 +219,7 @@ void Shader::SetDirectionalLight(DirectionalLight * dLight)
 		uniformDirectionalLight.uniformDiffuseIntensity, uniformDirectionalLight.uniformDirection);
 }
 
+// Manda solo las luces activas; el contador le dice al shader cuantas recorrer
 void Shader::SetPointLights(PointLight * pLight, unsigned int lightCount)
 {
 	if (lightCount > MAX_POINT_LIGHTS) lightCount = MAX_POINT_LIGHTS;
@@ -258,6 +271,7 @@ void Shader::ClearShader()
 }
 
 
+// Compila un shader (vertex o fragment) y lo agrega al programa
 void Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType)
 {
 	GLuint theShader = glCreateShader(shaderType);
@@ -274,6 +288,7 @@ void Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderT
 	GLint result = 0;
 	GLchar eLog[1024] = { 0 };
 
+	// Si no compila se imprime el error del shader
 	glGetShaderiv(theShader, GL_COMPILE_STATUS, &result);
 	if (!result)
 	{

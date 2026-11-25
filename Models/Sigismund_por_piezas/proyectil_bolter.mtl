@@ -1,0 +1,6 @@
+newmtl proyectil
+Ka 1 1 1
+Kd 1 1 1
+Ks 1 1 1
+Ns 64
+map_Kd proyectil_bolter.png
