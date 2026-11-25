@@ -1,2 +1,6 @@
-# Blender 5.2.2 LTS MTL File: 'None'
-# www.blender.org
+newmtl Roca_Espacial
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.05 0.05 0.05
+Ns 4
+map_Kd asteroide_roca.png

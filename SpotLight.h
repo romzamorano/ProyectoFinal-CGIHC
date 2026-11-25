@@ -1,5 +1,7 @@
 #pragma once
 #include "PointLight.h"
+
+// Spotlight: hereda posicion y atenuacion de PointLight y le agrega direccion y cono
 class SpotLight :
 	public PointLight
 {
@@ -18,13 +20,13 @@ public:
 		GLuint constantLocation, GLuint linearLocation, GLuint exponentLocation,
 		GLuint edgeLocation);
 
-	void SetFlash(glm::vec3 pos, glm::vec3 dir);
+	void SetFlash(glm::vec3 pos, glm::vec3 dir); // mueve y apunta la luz
 	void SetPos(glm::vec3 pos);
 	~SpotLight();
 
 private:
 	glm::vec3 direction;
 
-	GLfloat edge, procEdge;
+	GLfloat edge, procEdge; // apertura en grados y su coseno (el que usa el shader)
 };
 
